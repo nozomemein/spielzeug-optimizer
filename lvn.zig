@@ -20,6 +20,17 @@ const Function = struct {
         try self.blocks.items[block_id].push_insn(insn_id, self.allocator);
         return insn_id;
     }
+
+    pub fn dump_ir(self: @This()) !void {
+        for (self.blocks.items) |block| {
+            std.debug.print("bb{d}()\n", .{block.id});
+            for (block.insns.items) |insn_id| {
+                // TODO: Refine format
+                const insn = self.insns.items[insn_id];
+                std.debug.print("  insn: {}\n", .{insn});
+            }
+        }
+    }
 };
 
 // SSA ID
@@ -61,12 +72,14 @@ pub fn main(init: std.process.Init) !void {
     const arena = init.arena.allocator();
     var function = Function.init(arena);
     const bb = BasicBlock.init(0);
-    try function.push_block(bb);
-    _ = try function.pusn_insn(bb.id, .{ .const_ = .{ .value = 10 } });
-    _ = try function.pusn_insn(bb.id, .{ .const_ = .{ .value = 5 } });
-    _ = try function.pusn_insn(bb.id, .{ .add = .{ .lhs = 1, .rhs = 2 } });
 
-    for (function.blocks.items[0].insns.items) |insn| {
-        std.debug.print("{}\n", .{insn});
-    }
+    try function.push_block(bb);
+    const val1 = try function.pusn_insn(bb.id, .{ .const_ = .{ .value = 10 } });
+    const val2 = try function.pusn_insn(bb.id, .{ .const_ = .{ .value = 5 } });
+    _ = try function.pusn_insn(bb.id, .{ .add = .{ .lhs = val1, .rhs = val2 } });
+
+    try function.dump_ir();
+    // for (function.blocks.items[0].insns.items) |insn| {
+    //     std.debug.print("{}\n", .{insn});
+    // }
 }
