@@ -27,7 +27,7 @@ const Function = struct {
             for (block.insns.items) |insn_id| {
                 // TODO: Refine format
                 const insn = self.insns.items[insn_id];
-                std.debug.print("  insn: {}\n", .{insn});
+                std.debug.print("  v{d} = {}\n", .{insn_id, insn});
             }
         }
     }
