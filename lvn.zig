@@ -19,13 +19,13 @@ const BlockId = usize; // type alias
 // just BB
 const BasicBlock = struct {
     id: BlockId,
-    insns: std.ArrayList(Insn), // FIXME: This should be ArrayList(InsnId)
+    insns: std.ArrayList(InsnId),
 
     pub fn init(id: BlockId) BasicBlock {
         return .{ .insns = .empty, .id = id };
     }
 
-    pub fn push_insn(self: *@This(), insn: Insn, allocator: std.mem.Allocator) !void {
+    pub fn push_insn(self: *@This(), insn: InsnId, allocator: std.mem.Allocator) !void {
         try self.insns.append(allocator, insn);
     }
 
@@ -42,7 +42,7 @@ const Function = struct {
     insns: std.ArrayList(Insn),
 
     pub fn init(allocator: std.mem.Allocator) Function {
-        return .{ .blocks = .empty, .insns = .empty,  .allocator = allocator };
+        return .{ .blocks = .empty, .insns = .empty, .allocator = allocator };
     }
 
     pub fn push_block(self: *@This(), block: BasicBlock) !void {
@@ -51,7 +51,8 @@ const Function = struct {
 
     pub fn pusn_insn(self: *@This(), block_id: BlockId, insn: Insn) !InsnId {
         const insn_id = self.insns.items.len;
-        try self.blocks.items[block_id].push_insn(insn, self.allocator);
+        try self.insns.append(self.allocator, insn);
+        try self.blocks.items[block_id].push_insn(insn_id, self.allocator);
         return insn_id;
     }
 };
@@ -61,9 +62,9 @@ pub fn main(init: std.process.Init) !void {
     var function = Function.init(arena);
     const bb = BasicBlock.init(0);
     try function.push_block(bb);
-    try function.pusn_insn(bb.id, .{ .const_ = .{ .value = 10 } });
-    try function.pusn_insn(bb.id, .{ .const_ = .{ .value = 5 } });
-    try function.pusn_insn(bb.id, .{ .add = .{ .lhs = 1, .rhs = 2 } });
+    _ = try function.pusn_insn(bb.id, .{ .const_ = .{ .value = 10 } });
+    _ = try function.pusn_insn(bb.id, .{ .const_ = .{ .value = 5 } });
+    _ = try function.pusn_insn(bb.id, .{ .add = .{ .lhs = 1, .rhs = 2 } });
 
     for (function.blocks.items[0].insns.items) |insn| {
         std.debug.print("{}\n", .{insn});
