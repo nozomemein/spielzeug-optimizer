@@ -1,5 +1,27 @@
 const std = @import("std");
 
+// Function which holds array of blocks
+const Function = struct {
+    allocator: std.mem.Allocator,
+    blocks: std.ArrayList(BasicBlock),
+    insns: std.ArrayList(Insn),
+
+    pub fn init(allocator: std.mem.Allocator) Function {
+        return .{ .blocks = .empty, .insns = .empty, .allocator = allocator };
+    }
+
+    pub fn push_block(self: *@This(), block: BasicBlock) !void {
+        try self.blocks.append(self.allocator, block);
+    }
+
+    pub fn pusn_insn(self: *@This(), block_id: BlockId, insn: Insn) !InsnId {
+        const insn_id = self.insns.items.len;
+        try self.insns.append(self.allocator, insn);
+        try self.blocks.items[block_id].push_insn(insn_id, self.allocator);
+        return insn_id;
+    }
+};
+
 // SSA ID
 const InsnId = usize; // type alias
 
@@ -33,28 +55,6 @@ const BasicBlock = struct {
     // pub fn deinit(self: *BasicBlock) void {
     //   self.insns.deinit;
     // }
-};
-
-// Function which holds array of blocks
-const Function = struct {
-    allocator: std.mem.Allocator,
-    blocks: std.ArrayList(BasicBlock),
-    insns: std.ArrayList(Insn),
-
-    pub fn init(allocator: std.mem.Allocator) Function {
-        return .{ .blocks = .empty, .insns = .empty, .allocator = allocator };
-    }
-
-    pub fn push_block(self: *@This(), block: BasicBlock) !void {
-        try self.blocks.append(self.allocator, block);
-    }
-
-    pub fn pusn_insn(self: *@This(), block_id: BlockId, insn: Insn) !InsnId {
-        const insn_id = self.insns.items.len;
-        try self.insns.append(self.allocator, insn);
-        try self.blocks.items[block_id].push_insn(insn_id, self.allocator);
-        return insn_id;
-    }
 };
 
 pub fn main(init: std.process.Init) !void {
