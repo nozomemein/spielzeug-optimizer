@@ -28,7 +28,7 @@ const Function = struct {
         return insn_id;
     }
 
-    fn dump_ir(self: @This()) !void {
+    fn dump_ir(self: @This()) void {
         for (self.blocks.items, 0..) |block, block_id| {
             std.debug.print("bb{d}()\n", .{block_id});
             for (block.insns.items) |insn_id| {
@@ -41,25 +41,28 @@ const Function = struct {
     fn dump_insn(insn_id: InsnId, insn: Insn) !void {
         switch (insn) {
             .const_ => |payload| {
-                print("  v{d} = Const Value({d})\n", .{insn_id, payload.value});
+                print("  v{d} = Const Value({d})\n", .{ insn_id, payload.value });
             },
             .add => |payload| {
-                print("  v{d} = Add v{d}, v{d}\n", .{insn_id, payload.lhs, payload.rhs});
+                print("  v{d} = Add v{d}, v{d}\n", .{ insn_id, payload.lhs, payload.rhs });
             },
             .sub => |payload| {
-                print("  v{d} = Sub v{d}, v{d}\n", .{insn_id, payload.lhs, payload.rhs});
+                print("  v{d} = Sub v{d}, v{d}\n", .{ insn_id, payload.lhs, payload.rhs });
             },
             .mul => |payload| {
-                print("  v{d} = Mul v{d}, v{d}\n", .{insn_id, payload.lhs, payload.rhs});
+                print("  v{d} = Mul v{d}, v{d}\n", .{ insn_id, payload.lhs, payload.rhs });
             },
             .div => |payload| {
-                print("  v{d} = Div v{d}, v{d}\n", .{insn_id, payload.lhs, payload.rhs});
+                print("  v{d} = Div v{d}, v{d}\n", .{ insn_id, payload.lhs, payload.rhs });
             },
             else => {
                 print("  v{d} = {}\n", .{ insn_id, insn });
             },
         }
     }
+
+    // TODO: Add RPO
+    // fn rpo(self: @This()) !void {}
 };
 
 // SSA ID
@@ -106,8 +109,5 @@ pub fn main(init: std.process.Init) !void {
     const val2 = try function.pusn_insn(bb, .{ .const_ = .{ .value = 5 } });
     _ = try function.pusn_insn(bb, .{ .add = .{ .lhs = val1, .rhs = val2 } });
 
-    try function.dump_ir();
-    // for (function.blocks.items[0].insns.items) |insn| {
-    //     print("{}\n", .{insn});
-    // }
+    function.dump_ir();
 }
