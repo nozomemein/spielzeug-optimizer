@@ -6,22 +6,28 @@ const Function = struct {
     blocks: std.ArrayList(BasicBlock),
     insns: std.ArrayList(Insn),
 
-    pub fn init(allocator: std.mem.Allocator) Function {
+    fn init(allocator: std.mem.Allocator) Function {
         return .{ .blocks = .empty, .insns = .empty, .allocator = allocator };
     }
 
-    pub fn push_block(self: *@This(), block: BasicBlock) !void {
+    fn create_block(self: *@This()) !BlockId {
+      const block_id = self.blocks.items.len;
+      try self.push_block(BasicBlock.init(block_id));
+      return block_id;
+    }
+
+    fn push_block(self: *@This(), block: BasicBlock) !void {
         try self.blocks.append(self.allocator, block);
     }
 
-    pub fn pusn_insn(self: *@This(), block_id: BlockId, insn: Insn) !InsnId {
+    fn pusn_insn(self: *@This(), block_id: BlockId, insn: Insn) !InsnId {
         const insn_id = self.insns.items.len;
         try self.insns.append(self.allocator, insn);
         try self.blocks.items[block_id].push_insn(insn_id, self.allocator);
         return insn_id;
     }
 
-    pub fn dump_ir(self: @This()) !void {
+    fn dump_ir(self: @This()) !void {
         for (self.blocks.items) |block| {
             std.debug.print("bb{d}()\n", .{block.id});
             for (block.insns.items) |insn_id| {
@@ -54,16 +60,16 @@ const BasicBlock = struct {
     id: BlockId,
     insns: std.ArrayList(InsnId),
 
-    pub fn init(id: BlockId) BasicBlock {
+    fn init(id: BlockId) BasicBlock {
         return .{ .insns = .empty, .id = id };
     }
 
-    pub fn push_insn(self: *@This(), insn: InsnId, allocator: std.mem.Allocator) !void {
+    fn push_insn(self: *@This(), insn: InsnId, allocator: std.mem.Allocator) !void {
         try self.insns.append(allocator, insn);
     }
 
     // Optional if we want to release manually
-    // pub fn deinit(self: *BasicBlock) void {
+    // fn deinit(self: *BasicBlock) void {
     //   self.insns.deinit;
     // }
 };
@@ -71,12 +77,10 @@ const BasicBlock = struct {
 pub fn main(init: std.process.Init) !void {
     const arena = init.arena.allocator();
     var function = Function.init(arena);
-    const bb = BasicBlock.init(0);
-
-    try function.push_block(bb);
-    const val1 = try function.pusn_insn(bb.id, .{ .const_ = .{ .value = 10 } });
-    const val2 = try function.pusn_insn(bb.id, .{ .const_ = .{ .value = 5 } });
-    _ = try function.pusn_insn(bb.id, .{ .add = .{ .lhs = val1, .rhs = val2 } });
+    const bb = try function.create_block();
+    const val1 = try function.pusn_insn(bb, .{ .const_ = .{ .value = 10 } });
+    const val2 = try function.pusn_insn(bb, .{ .const_ = .{ .value = 5 } });
+    _ = try function.pusn_insn(bb, .{ .add = .{ .lhs = val1, .rhs = val2 } });
 
     try function.dump_ir();
     // for (function.blocks.items[0].insns.items) |insn| {
