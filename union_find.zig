@@ -4,7 +4,7 @@ pub fn UnionFind(comptime T: type) type {
     return struct {
         forwarded: std.ArrayList(?T),
 
-        fn init() @This() {
+        pub fn init() @This() {
             return .{ .forwarded = .empty };
         }
 
@@ -28,7 +28,7 @@ pub fn UnionFind(comptime T: type) type {
             }
         }
 
-        fn find(self: *@This(), insn: T, allocator: std.mem.Allocator) !T {
+        pub fn find(self: *@This(), insn: T, allocator: std.mem.Allocator) !T {
             const result = self.find_const(insn);
             if (result != insn) {
                 // path compression
@@ -46,7 +46,7 @@ pub fn UnionFind(comptime T: type) type {
             }
         }
 
-        fn make_equal_to(
+        pub fn make_equal_to(
             self: *@This(),
             insn: T,
             target: T,

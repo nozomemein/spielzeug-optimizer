@@ -1,14 +1,21 @@
 const std = @import("std");
 const print = std.debug.print;
+const UnionFind = @import("union_find.zig").UnionFind(InsnId);
 
 // Function which holds array of blocks
 const Function = struct {
     allocator: std.mem.Allocator,
     blocks: std.ArrayList(BasicBlock),
     insns: std.ArrayList(Insn),
+    union_find: UnionFind,
 
     fn init(allocator: std.mem.Allocator) @This() {
-        return .{ .blocks = .empty, .insns = .empty, .allocator = allocator };
+        return .{
+            .allocator = allocator,
+            .blocks = .empty,
+            .insns = .empty,
+            .union_find = UnionFind.init(),
+        };
     }
 
     fn create_block(self: *@This()) !BlockId {
@@ -24,7 +31,7 @@ const Function = struct {
     fn push_insn(self: *@This(), block_id: BlockId, insn: Insn) !InsnId {
         const insn_id = self.insns.items.len;
         try self.insns.append(self.allocator, insn);
-        if (block_id >= self.insns.items.len) {
+        if (block_id >= self.blocks.items.len) {
             return error.BlockNotFound;
         }
         try self.blocks.items[block_id].push_insn(insn_id, self.allocator);
@@ -107,8 +114,6 @@ const BasicBlock = struct {
     //   self.insns.deinit;
     // }
 };
-
-
 
 pub fn main(init: std.process.Init) !void {
     const arena = init.arena.allocator();
