@@ -7,7 +7,7 @@ const Function = struct {
     blocks: std.ArrayList(BasicBlock),
     insns: std.ArrayList(Insn),
 
-    fn init(allocator: std.mem.Allocator) Function {
+    fn init(allocator: std.mem.Allocator) @This() {
         return .{ .blocks = .empty, .insns = .empty, .allocator = allocator };
     }
 
@@ -21,14 +21,17 @@ const Function = struct {
         try self.blocks.append(self.allocator, block);
     }
 
-    fn pusn_insn(self: *@This(), block_id: BlockId, insn: Insn) !InsnId {
+    fn push_insn(self: *@This(), block_id: BlockId, insn: Insn) !InsnId {
         const insn_id = self.insns.items.len;
         try self.insns.append(self.allocator, insn);
+        if (block_id >= self.insns.items.len) {
+            return error.BlockNotFound;
+        }
         try self.blocks.items[block_id].push_insn(insn_id, self.allocator);
         return insn_id;
     }
 
-    fn dump_ir(self: @This()) void {
+    fn dump_ir(self: *const @This()) void {
         for (self.blocks.items, 0..) |block, block_id| {
             std.debug.print("bb{d}()\n", .{block_id});
             for (block.insns.items) |insn_id| {
@@ -63,6 +66,10 @@ const Function = struct {
 
     // TODO: Add RPO
     // fn rpo(self: @This()) !void {}
+
+    // fn run_lvn(self: *@This()) !void {
+    //     for (self.blocks.items, 0..) |block, block_id| {}
+    // }
 };
 
 // SSA ID
@@ -85,7 +92,7 @@ const BlockId = usize; // type alias
 const BasicBlock = struct {
     insns: std.ArrayList(InsnId),
 
-    fn init() BasicBlock {
+    fn init() @This() {
         return .{
             .insns = .empty,
         };
@@ -101,13 +108,71 @@ const BasicBlock = struct {
     // }
 };
 
+const UnionFind = struct {
+    forwarded: std.ArrayList(?InsnId),
+
+    fn init() @This() {
+        return .{ .forwarded = .empty };
+    }
+
+    fn at(self: *const @This(), idx: InsnId) ?InsnId {
+        if (idx >= self.forwarded.items.len) return null;
+        return self.forwarded.items[idx];
+    }
+
+    fn set(
+        self: *@This(),
+        idx: InsnId,
+        target: InsnId,
+        allocator: std.mem.Allocator,
+    ) !void {
+        if (idx >= self.forwarded.items[idx]) {
+            try self.forwarded.append(allocator, null);
+        }
+
+        if (idx != target) {
+            self.forwarded.items[idx] = target;
+        }
+    }
+
+    fn find(self: *@This(), insn: InsnId, allocator: std.mem.Allocator) !InsnId {
+        const result = self.find_const(insn);
+        if (result != insn) {
+            // path compression
+            try self.set(insn, result, allocator);
+        }
+        return result;
+    }
+
+    fn find_const(self: *const @This(), insn: InsnId) InsnId {
+        var result = insn;
+        while (true) {
+            const next = self.at(result) orelse return result;
+            std.debug.assert(result != next);
+            result = next;
+        }
+    }
+
+    fn make_equal_to(
+        self: *@This(),
+        insn: InsnId,
+        target: InsnId,
+        allocator: std.mem.Allocator,
+    ) !void {
+        const found = try self.find(insn, allocator);
+        try self.set(found, target, allocator);
+    }
+};
+
 pub fn main(init: std.process.Init) !void {
     const arena = init.arena.allocator();
     var function = Function.init(arena);
     const bb = try function.create_block();
-    const val1 = try function.pusn_insn(bb, .{ .const_ = .{ .value = 10 } });
-    const val2 = try function.pusn_insn(bb, .{ .const_ = .{ .value = 5 } });
-    _ = try function.pusn_insn(bb, .{ .add = .{ .lhs = val1, .rhs = val2 } });
+    const val1 = try function.push_insn(bb, .{ .const_ = .{ .value = 10 } });
+    const val2 = try function.push_insn(bb, .{ .const_ = .{ .value = 5 } });
+    _ = try function.push_insn(bb, .{ .add = .{ .lhs = val1, .rhs = val2 } });
 
+    function.dump_ir();
+    // function.run_lvn();
     function.dump_ir();
 }
