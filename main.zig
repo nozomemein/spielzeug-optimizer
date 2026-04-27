@@ -73,7 +73,7 @@ const Function = struct {
 };
 
 // SSA ID
-const InsnId = usize; // type alias
+pub const InsnId = usize; // type alias
 
 // Insn (minimal)
 const Insn = union(enum) {
@@ -108,61 +108,7 @@ const BasicBlock = struct {
     // }
 };
 
-const UnionFind = struct {
-    forwarded: std.ArrayList(?InsnId),
 
-    fn init() @This() {
-        return .{ .forwarded = .empty };
-    }
-
-    fn at(self: *const @This(), idx: InsnId) ?InsnId {
-        if (idx >= self.forwarded.items.len) return null;
-        return self.forwarded.items[idx];
-    }
-
-    fn set(
-        self: *@This(),
-        idx: InsnId,
-        target: InsnId,
-        allocator: std.mem.Allocator,
-    ) !void {
-        if (idx >= self.forwarded.items[idx]) {
-            try self.forwarded.append(allocator, null);
-        }
-
-        if (idx != target) {
-            self.forwarded.items[idx] = target;
-        }
-    }
-
-    fn find(self: *@This(), insn: InsnId, allocator: std.mem.Allocator) !InsnId {
-        const result = self.find_const(insn);
-        if (result != insn) {
-            // path compression
-            try self.set(insn, result, allocator);
-        }
-        return result;
-    }
-
-    fn find_const(self: *const @This(), insn: InsnId) InsnId {
-        var result = insn;
-        while (true) {
-            const next = self.at(result) orelse return result;
-            std.debug.assert(result != next);
-            result = next;
-        }
-    }
-
-    fn make_equal_to(
-        self: *@This(),
-        insn: InsnId,
-        target: InsnId,
-        allocator: std.mem.Allocator,
-    ) !void {
-        const found = try self.find(insn, allocator);
-        try self.set(found, target, allocator);
-    }
-};
 
 pub fn main(init: std.process.Init) !void {
     const arena = init.arena.allocator();
