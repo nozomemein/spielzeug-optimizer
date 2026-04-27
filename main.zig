@@ -43,12 +43,12 @@ const Function = struct {
             std.debug.print("bb{d}()\n", .{block_id});
             for (block.insns.items) |insn_id| {
                 const insn = self.insns.items[insn_id];
-                try dump_insn(insn_id, insn);
+                dump_insn(insn_id, insn);
             }
         }
     }
 
-    fn dump_insn(insn_id: InsnId, insn: Insn) !void {
+    fn dump_insn(insn_id: InsnId, insn: Insn) void {
         switch (insn) {
             .const_ => |payload| {
                 print("  v{d} = Const Value({d})\n", .{ insn_id, payload.value });

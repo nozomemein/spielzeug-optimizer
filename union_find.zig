@@ -8,6 +8,10 @@ pub fn UnionFind(comptime T: type) type {
             return .{ .forwarded = .empty };
         }
 
+        pub fn deinit(self: *@This(), allocator: std.mem.Allocator) void {
+            self.forwarded.deinit(allocator);
+        }
+
         fn at(self: *const @This(), idx: T) ?T {
             if (idx >= self.forwarded.items.len) return null;
             return self.forwarded.items[idx];
@@ -19,7 +23,7 @@ pub fn UnionFind(comptime T: type) type {
             target: T,
             allocator: std.mem.Allocator,
         ) !void {
-            if (idx >= self.forwarded.items[idx]) {
+            while (idx >= self.forwarded.items.len) {
                 try self.forwarded.append(allocator, null);
             }
 
@@ -56,4 +60,32 @@ pub fn UnionFind(comptime T: type) type {
             try self.set(found, target, allocator);
         }
     };
+}
+
+test "find returns self" {
+    var uf = UnionFind(usize).init();
+    defer uf.deinit(std.testing.allocator);
+
+    try std.testing.expectEqual(3, try uf.find(3, std.testing.allocator));
+}
+
+test "find transitive targets" {
+    var uf = UnionFind(usize).init();
+    defer uf.deinit(std.testing.allocator);
+
+    try uf.make_equal_to(3, 4, std.testing.allocator);
+    try uf.make_equal_to(4, 5, std.testing.allocator);
+    try std.testing.expectEqual(5, try uf.find(3, std.testing.allocator));
+    try std.testing.expectEqual(5, try uf.find(4, std.testing.allocator));
+}
+
+test "find path compression" {
+    var uf = UnionFind(usize).init();
+    defer uf.deinit(std.testing.allocator);
+
+    try uf.make_equal_to(3, 4, std.testing.allocator);
+    try uf.make_equal_to(4, 5, std.testing.allocator);
+    try std.testing.expectEqual(4, uf.at(3).?);
+    try std.testing.expectEqual(5, try uf.find(3, std.testing.allocator));
+    try std.testing.expectEqual(5, uf.at(3).?);
 }
