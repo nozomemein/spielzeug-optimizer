@@ -45,6 +45,7 @@ const Function = struct {
     fn resolve_id(self: *const @This(), insn_id: InsnId) InsnId {
         return self.union_find.find_const(insn_id);
     }
+
     fn find_insn(self: *const @This(), insn_id: InsnId) Insn {
         const found_id = self.resolve_id(insn_id);
         const insn = self.insns.items[found_id];
