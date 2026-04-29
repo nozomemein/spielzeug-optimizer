@@ -42,7 +42,7 @@ const Function = struct {
         for (self.blocks.items, 0..) |block, block_id| {
             std.debug.print("bb{d}()\n", .{block_id});
             for (block.insns.items) |insn_id| {
-                const insn = self.insns.items[insn_id];
+                const insn = self.insns.items[self.union_find.find_const(insn_id)];
                 dump_insn(insn_id, insn);
             }
         }

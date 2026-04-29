@@ -41,7 +41,7 @@ pub fn UnionFind(comptime T: type) type {
             return result;
         }
 
-        fn find_const(self: *const @This(), insn: T) T {
+        pub fn find_const(self: *const @This(), insn: T) T {
             var result = insn;
             while (true) {
                 const next = self.at(result) orelse return result;
