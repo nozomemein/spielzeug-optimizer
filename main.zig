@@ -1,5 +1,4 @@
 const std = @import("std");
-const print = std.debug.print;
 const UnionFind = @import("union_find.zig").UnionFind(InsnId);
 
 // Function which holds array of blocks
@@ -62,40 +61,41 @@ const Function = struct {
         };
     }
 
-    fn dump_ir(self: *const @This()) void {
+    fn dump_ir(self: *const @This(), writer: *std.Io.Writer) !void {
         for (self.blocks.items, 0..) |block, block_id| {
-            std.debug.print("bb{d}()\n", .{block_id});
+            try writer.print("bb{d}()\n", .{block_id});
             for (block.insns.items) |insn_id| {
                 const found_id = self.resolve_id(insn_id);
-                if (found_id != insn_id) continue; // logically delete from the dump output
+                const raw_insn = self.insns.items[insn_id];
+                if (found_id != insn_id and raw_insn.has_output()) continue; // logically delete from the dump output
                 const insn = self.find_insn(insn_id);
-                dump_insn(insn_id, insn);
+                try dump_insn(insn_id, insn, writer);
             }
         }
     }
 
-    fn dump_insn(insn_id: InsnId, insn: Insn) void {
+    fn dump_insn(insn_id: InsnId, insn: Insn, writer: *std.Io.Writer) !void {
         switch (insn) {
             .const_ => |payload| {
-                print("  v{d} = Const Value({d})\n", .{ insn_id, payload.value });
+                try writer.print("  v{d} = Const Value({d})\n", .{ insn_id, payload.value });
             },
             .add => |payload| {
-                print("  v{d} = Add v{d}, v{d}\n", .{ insn_id, payload.lhs, payload.rhs });
+                try writer.print("  v{d} = Add v{d}, v{d}\n", .{ insn_id, payload.lhs, payload.rhs });
             },
             .sub => |payload| {
-                print("  v{d} = Sub v{d}, v{d}\n", .{ insn_id, payload.lhs, payload.rhs });
+                try writer.print("  v{d} = Sub v{d}, v{d}\n", .{ insn_id, payload.lhs, payload.rhs });
             },
             .mul => |payload| {
-                print("  v{d} = Mul v{d}, v{d}\n", .{ insn_id, payload.lhs, payload.rhs });
+                try writer.print("  v{d} = Mul v{d}, v{d}\n", .{ insn_id, payload.lhs, payload.rhs });
             },
             .div => |payload| {
-                print("  v{d} = Div v{d}, v{d}\n", .{ insn_id, payload.lhs, payload.rhs });
+                try writer.print("  v{d} = Div v{d}, v{d}\n", .{ insn_id, payload.lhs, payload.rhs });
             },
             .ret => |payload| {
-                print("  Return v{d}\n", .{payload.value});
+                try writer.print("  Return v{d}\n", .{payload.value});
             },
             else => {
-                print("  v{d} = {}\n", .{ insn_id, insn });
+                try writer.print("  v{d} = {}\n", .{ insn_id, insn });
             },
         }
     }
@@ -103,6 +103,7 @@ const Function = struct {
     // TODO: Add RPO
     // fn rpo(self: @This()) !void {}
 
+    // TODO Support GVN
     fn run_lvn(self: *@This()) !void {
         for (self.blocks.items, 0..) |_, block_id| {
             try self.run_lvn_block(block_id);
@@ -170,6 +171,13 @@ const Insn = union(enum) {
     div: struct { lhs: InsnId, rhs: InsnId },
     copy: struct { value: InsnId },
     ret: struct { value: InsnId },
+
+    fn has_output(self: @This()) bool {
+        return switch (self) {
+            .ret => false,
+            else => true,
+        };
+    }
 };
 
 // LVN Part
@@ -218,6 +226,12 @@ const BasicBlock = struct {
 
 pub fn main(init: std.process.Init) !void {
     const arena = init.arena.allocator();
+
+    // Preparing for stdout
+    var buffer: [4096]u8 = undefined;
+    var stdout_writer = std.Io.File.stdout().writer(init.io, &buffer);
+    const stdout = &stdout_writer.interface;
+
     var function = Function.init(arena);
     const bb = try function.create_block();
     const val1 = try function.push_insn(bb, .{
@@ -236,7 +250,48 @@ pub fn main(init: std.process.Init) !void {
         .ret = .{ .value = add2 },
     });
 
-    function.dump_ir();
+    try function.dump_ir(stdout);
     try function.run_lvn();
-    function.dump_ir();
+    try function.dump_ir(stdout);
+    try stdout.flush();
+}
+
+test "local value numbering" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+
+    var function = Function.init(arena_state.allocator());
+    const bb = try function.create_block();
+    const val1 = try function.push_insn(bb, .{
+        .const_ = .{ .value = 10 },
+    });
+    const val2 = try function.push_insn(bb, .{
+        .const_ = .{ .value = 5 },
+    });
+    _ = try function.push_insn(bb, .{
+        .add = .{ .lhs = val1, .rhs = val2 },
+    });
+    const add2 = try function.push_insn(bb, .{
+        .add = .{ .lhs = val1, .rhs = val2 },
+    });
+    _ = try function.push_insn(bb, .{
+        .ret = .{ .value = add2 },
+    });
+
+    var out = std.Io.Writer.Allocating.init(std.testing.allocator);
+    defer out.deinit();
+
+    try function.run_lvn();
+    try function.dump_ir(&out.writer);
+
+    try std.testing.expectEqualStrings(
+        \\bb0()
+        \\  v0 = Const Value(10)
+        \\  v1 = Const Value(5)
+        \\  v2 = Add v0, v1
+        \\  Return v2
+        \\
+    ,
+        out.writer.buffered(),
+    );
 }
