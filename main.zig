@@ -46,6 +46,7 @@ const Function = struct {
         return self.union_find.find_const(insn_id);
     }
 
+    // Resolve this instruction and its operands through union-find.
     fn find_insn(self: *const @This(), insn_id: InsnId) Insn {
         const found_id = self.resolve_id(insn_id);
         const insn = self.insns.items[found_id];
