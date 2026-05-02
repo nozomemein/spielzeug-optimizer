@@ -126,11 +126,12 @@ const Function = struct {
     }
 
     fn rpo(self: *const @This()) !std.ArrayList(BlockId) {
-        var visited: std.ArrayList(bool) = .empty;
+        // var visited: std.ArrayList(bool) = .empty;
 
-        while (visited.items.len < self.blocks.items.len) {
-            try visited.append(self.allocator, false); // Initialize visited list
-        }
+        // while (visited.items.len < self.blocks.items.len) {
+        //     try visited.append(self.allocator, false); // Initialize visited list
+        // }
+        var visited = try std.DynamicBitSet.initEmpty(self.allocator, self.blocks.items.len);
 
         var oder: std.ArrayList(BlockId) = .empty;
 
@@ -143,12 +144,12 @@ const Function = struct {
     fn dfs_postoder(
         self: *const @This(),
         block_id: BlockId,
-        visited: *std.ArrayList(bool),
+        visited: *std.DynamicBitSet,
         oder: *std.ArrayList(BlockId),
     ) !void {
-        if (visited.items[block_id]) return;
+        if (visited.isSet(block_id)) return;
 
-        visited.items[block_id] = true;
+        visited.set(block_id);
 
         const block = self.blocks.items[block_id];
 
