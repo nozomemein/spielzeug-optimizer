@@ -169,7 +169,7 @@ const Function = struct {
 
     // TODO Support GVN
     fn run_lvn(self: *@This()) !void {
-        for (self.blocks.items, 0..) |_, block_id| {
+        for ((try self.rpo()).items) |block_id| {
             try self.run_lvn_block(block_id);
         }
     }
