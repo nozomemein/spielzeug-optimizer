@@ -180,6 +180,17 @@ const Insn = union(enum) {
     }
 };
 
+const Terminator = union(enum) {
+    none,
+    jump: struct { target: BlockId },
+    ret: struct { value: InsnId },
+    branch: struct {
+        cond: InsnId,
+        then_block: BlockId,
+        else_block: BlockId,
+    },
+};
+
 // LVN Part
 const BinOp = enum {
     add,
@@ -207,15 +218,21 @@ const BlockId = usize; // type alias
 // just BB
 const BasicBlock = struct {
     insns: std.ArrayList(InsnId),
+    term: Terminator,
 
     fn init() @This() {
         return .{
             .insns = .empty,
+            .term = .none,
         };
     }
 
     fn push_insn(self: *@This(), insn: InsnId, allocator: std.mem.Allocator) !void {
         try self.insns.append(allocator, insn);
+    }
+
+    fn set_terminator(self: *@This(), term: Terminator) void {
+        self.term = term;
     }
 
     // Optional if we want to release manually
