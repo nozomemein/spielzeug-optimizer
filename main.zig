@@ -281,6 +281,19 @@ test "local value numbering" {
     var out = std.Io.Writer.Allocating.init(std.testing.allocator);
     defer out.deinit();
 
+    try function.dump_ir(&out.writer);
+    try std.testing.expectEqualStrings(
+        \\bb0()
+        \\  v0 = Const Value(10)
+        \\  v1 = Const Value(5)
+        \\  v2 = Add v0, v1
+        \\  v3 = Add v0, v1
+        \\  Return v3
+        \\
+    ,
+        out.writer.buffered(),
+    );
+    out.clearRetainingCapacity();
     try function.run_lvn();
     try function.dump_ir(&out.writer);
 
