@@ -39,7 +39,7 @@ const Function = struct {
         return insn_id;
     }
 
-    fn set_terminator(self: @This(), block_id: BlockId, term: Terminator) !void {
+    fn set_terminator(self: *@This(), block_id: BlockId, term: Terminator) !void {
         if (block_id >= self.blocks.items.len) {
             return error.BlockNotFound;
         }
@@ -133,19 +133,19 @@ const Function = struct {
         // }
         var visited = try std.DynamicBitSet.initEmpty(self.allocator, self.blocks.items.len);
 
-        var oder: std.ArrayList(BlockId) = .empty;
+        var order: std.ArrayList(BlockId) = .empty;
 
-        try self.dfs_postoder(self.entry, &visited, &oder);
+        try self.dfs_postorder(self.entry, &visited, &order);
 
-        std.mem.reverse(BlockId, oder.items);
-        return oder;
+        std.mem.reverse(BlockId, order.items);
+        return order;
     }
 
-    fn dfs_postoder(
+    fn dfs_postorder(
         self: *const @This(),
         block_id: BlockId,
         visited: *std.DynamicBitSet,
-        oder: *std.ArrayList(BlockId),
+        order: *std.ArrayList(BlockId),
     ) !void {
         if (visited.isSet(block_id)) return;
 
@@ -157,15 +157,15 @@ const Function = struct {
             .none => {},
             .ret => {},
             .jump => |p| {
-                try self.dfs_postoder(p.target, visited, oder);
+                try self.dfs_postorder(p.target, visited, order);
             },
             .branch => |p| {
-                try self.dfs_postoder(p.else_block, visited, oder);
-                try self.dfs_postoder(p.then_block, visited, oder);
+                try self.dfs_postorder(p.else_block, visited, order);
+                try self.dfs_postorder(p.then_block, visited, order);
             },
         }
 
-        try oder.append(self.allocator, block_id);
+        try order.append(self.allocator, block_id);
     }
 
     // TODO Support GVN
