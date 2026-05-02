@@ -37,6 +37,13 @@ const Function = struct {
         return insn_id;
     }
 
+    fn set_terminator(self: @This(), block_id: BlockId, term: Terminator) !void {
+        if (block_id >= self.blocks.items.len) {
+            return error.BlockNotFound;
+        }
+        self.blocks.items[block_id].set_terminator(term);
+    }
+
     fn make_equal_to(self: *@This(), insn: InsnId, replacement: InsnId) !void {
         try self.union_find.make_equal_to(insn, replacement, self.allocator);
     }
@@ -55,7 +62,6 @@ const Function = struct {
             .sub => |p| .{ .sub = .{ .lhs = self.resolve_id(p.lhs), .rhs = self.resolve_id(p.rhs) } },
             .mul => |p| .{ .mul = .{ .lhs = self.resolve_id(p.lhs), .rhs = self.resolve_id(p.rhs) } },
             .div => |p| .{ .div = .{ .lhs = self.resolve_id(p.lhs), .rhs = self.resolve_id(p.rhs) } },
-            .ret => |p| .{ .ret = .{ .value = self.resolve_id(p.value) } },
             .copy => |p| .{ .copy = .{ .value = self.resolve_id(p.value) } },
             else => insn,
         };
@@ -66,11 +72,12 @@ const Function = struct {
             try writer.print("bb{d}()\n", .{block_id});
             for (block.insns.items) |insn_id| {
                 const found_id = self.resolve_id(insn_id);
-                const raw_insn = self.insns.items[insn_id];
-                if (found_id != insn_id and raw_insn.has_output()) continue; // logically delete from the dump output
+                // const raw_insn = self.insns.items[insn_id];
+                if (found_id != insn_id) continue; // logically delete from the dump output
                 const insn = self.find_insn(insn_id);
                 try dump_insn(insn_id, insn, writer);
             }
+            try self.dump_terminator(block.term, writer);
         }
     }
 
@@ -91,12 +98,26 @@ const Function = struct {
             .div => |payload| {
                 try writer.print("  v{d} = Div v{d}, v{d}\n", .{ insn_id, payload.lhs, payload.rhs });
             },
-            .ret => |payload| {
-                try writer.print("  Return v{d}\n", .{payload.value});
-            },
             else => {
                 try writer.print("  v{d} = {}\n", .{ insn_id, insn });
             },
+        }
+    }
+
+    fn dump_terminator(self: *const @This(), term: Terminator, writer: *std.Io.Writer) !void {
+        switch (term) {
+            .ret => |p| {
+                const value = self.resolve_id(p.value);
+                try writer.print("  Return v{d}\n", .{value});
+            },
+            .jump => |p| {
+                try writer.print("  Jump bb{d}\n", .{p.target});
+            },
+            .branch => |p| {
+                const cond = self.resolve_id(p.cond);
+                try writer.print("  Branch v{d}, bb{d}, bb{d}\n", .{ cond, p.then_block, p.else_block });
+            },
+            else => {},
         }
     }
 
@@ -170,14 +191,13 @@ const Insn = union(enum) {
     mul: struct { lhs: InsnId, rhs: InsnId },
     div: struct { lhs: InsnId, rhs: InsnId },
     copy: struct { value: InsnId },
-    ret: struct { value: InsnId },
 
-    fn has_output(self: @This()) bool {
-        return switch (self) {
-            .ret => false,
-            else => true,
-        };
-    }
+    // fn has_output(self: @This()) bool {
+    //     return switch (self) {
+    //         .ret => false,
+    //         else => true,
+    //     };
+    // }
 };
 
 const Terminator = union(enum) {
@@ -263,7 +283,7 @@ pub fn main(init: std.process.Init) !void {
     const add2 = try function.push_insn(bb, .{
         .add = .{ .lhs = val1, .rhs = val2 },
     });
-    _ = try function.push_insn(bb, .{
+    try function.set_terminator(bb, .{
         .ret = .{ .value = add2 },
     });
 
@@ -291,7 +311,7 @@ test "local value numbering" {
     const add2 = try function.push_insn(bb, .{
         .add = .{ .lhs = val1, .rhs = val2 },
     });
-    _ = try function.push_insn(bb, .{
+    try function.set_terminator(bb, .{
         .ret = .{ .value = add2 },
     });
 
