@@ -5,6 +5,7 @@ const UnionFind = @import("union_find.zig").UnionFind(InsnId);
 const Function = struct {
     allocator: std.mem.Allocator,
     blocks: std.ArrayList(BasicBlock),
+    entry: BlockId,
     insns: std.ArrayList(Insn),
     union_find: UnionFind,
 
@@ -12,6 +13,7 @@ const Function = struct {
         return .{
             .allocator = allocator,
             .blocks = .empty,
+            .entry = 0,
             .insns = .empty,
             .union_find = UnionFind.init(),
         };
@@ -68,7 +70,9 @@ const Function = struct {
     }
 
     fn dump_ir(self: *const @This(), writer: *std.Io.Writer) !void {
-        for (self.blocks.items, 0..) |block, block_id| {
+        const order = try self.rpo();
+        for (order.items) |block_id| {
+            const block = self.blocks.items[block_id];
             try writer.print("bb{d}()\n", .{block_id});
             for (block.insns.items) |insn_id| {
                 const found_id = self.resolve_id(insn_id);
@@ -121,8 +125,47 @@ const Function = struct {
         }
     }
 
-    // TODO: Add RPO
-    // fn rpo(self: @This()) !void {}
+    fn rpo(self: *const @This()) !std.ArrayList(BlockId) {
+        var visited: std.ArrayList(bool) = .empty;
+
+        while (visited.items.len < self.blocks.items.len) {
+            try visited.append(self.allocator, false); // Initialize visited list
+        }
+
+        var oder: std.ArrayList(BlockId) = .empty;
+
+        try self.dfs_postoder(self.entry, &visited, &oder);
+
+        std.mem.reverse(BlockId, oder.items);
+        return oder;
+    }
+
+    fn dfs_postoder(
+        self: *const @This(),
+        block_id: BlockId,
+        visited: *std.ArrayList(bool),
+        oder: *std.ArrayList(BlockId),
+    ) !void {
+        if (visited.items[block_id]) return;
+
+        visited.items[block_id] = true;
+
+        const block = self.blocks.items[block_id];
+
+        switch (block.term) {
+            .none => {},
+            .ret => {},
+            .jump => |p| {
+                try self.dfs_postoder(p.target, visited, oder);
+            },
+            .branch => |p| {
+                try self.dfs_postoder(p.then_block, visited, oder);
+                try self.dfs_postoder(p.else_block, visited, oder);
+            },
+        }
+
+        try oder.append(self.allocator, block_id);
+    }
 
     // TODO Support GVN
     fn run_lvn(self: *@This()) !void {
@@ -270,25 +313,32 @@ pub fn main(init: std.process.Init) !void {
     const stdout = &stdout_writer.interface;
 
     var function = Function.init(arena);
-    const bb = try function.create_block();
-    const val1 = try function.push_insn(bb, .{
+    const entry = try function.create_block();
+    const val1 = try function.push_insn(entry, .{
         .const_ = .{ .value = 10 },
     });
-    const val2 = try function.push_insn(bb, .{
+    const val2 = try function.push_insn(entry, .{
         .const_ = .{ .value = 5 },
     });
-    _ = try function.push_insn(bb, .{
+    _ = try function.push_insn(entry, .{
         .add = .{ .lhs = val1, .rhs = val2 },
     });
-    const add2 = try function.push_insn(bb, .{
+    _ = try function.push_insn(entry, .{
         .add = .{ .lhs = val1, .rhs = val2 },
-    });
-    try function.set_terminator(bb, .{
-        .ret = .{ .value = add2 },
     });
 
-    try function.dump_ir(stdout);
-    try function.run_lvn();
+    const jump_target = try function.create_block();
+    try function.set_terminator(entry, .{
+        .jump = .{ .target = jump_target },
+    });
+
+    const val3 = try function.push_insn(jump_target, .{
+        .const_ = .{ .value = 15 },
+    });
+    try function.set_terminator(jump_target, .{
+        .ret = .{ .value = val3 },
+    });
+
     try function.dump_ir(stdout);
     try stdout.flush();
 }
