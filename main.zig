@@ -126,11 +126,6 @@ const Function = struct {
     }
 
     fn rpo(self: *const @This()) !std.ArrayList(BlockId) {
-        // var visited: std.ArrayList(bool) = .empty;
-
-        // while (visited.items.len < self.blocks.items.len) {
-        //     try visited.append(self.allocator, false); // Initialize visited list
-        // }
         var visited = try std.DynamicBitSet.initEmpty(self.allocator, self.blocks.items.len);
 
         var order: std.ArrayList(BlockId) = .empty;
