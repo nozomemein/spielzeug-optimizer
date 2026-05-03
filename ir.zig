@@ -19,73 +19,73 @@ pub const Function = struct {
         };
     }
 
-    pub fn create_block(self: *@This()) !BlockId {
+    pub fn createBlock(self: *@This()) !BlockId {
         const block_id = self.blocks.items.len;
-        try self.push_block(BasicBlock.init());
+        try self.pushBlock(BasicBlock.init());
         return block_id;
     }
 
-    fn push_block(self: *@This(), block: BasicBlock) !void {
+    fn pushBlock(self: *@This(), block: BasicBlock) !void {
         try self.blocks.append(self.allocator, block);
     }
 
-    pub fn push_insn(self: *@This(), block_id: BlockId, insn: Insn) !InsnId {
+    pub fn pushInsn(self: *@This(), block_id: BlockId, insn: Insn) !InsnId {
         const insn_id = self.insns.items.len;
         try self.insns.append(self.allocator, insn);
         if (block_id >= self.blocks.items.len) {
             return error.BlockNotFound;
         }
-        try self.blocks.items[block_id].push_insn(insn_id, self.allocator);
+        try self.blocks.items[block_id].pushInsn(insn_id, self.allocator);
         return insn_id;
     }
 
-    pub fn set_terminator(self: *@This(), block_id: BlockId, term: Terminator) !void {
+    pub fn setTerminator(self: *@This(), block_id: BlockId, term: Terminator) !void {
         if (block_id >= self.blocks.items.len) {
             return error.BlockNotFound;
         }
-        self.blocks.items[block_id].set_terminator(term);
+        self.blocks.items[block_id].setTerminator(term);
     }
 
-    pub fn make_equal_to(self: *@This(), insn: InsnId, replacement: InsnId) !void {
-        try self.union_find.make_equal_to(insn, replacement, self.allocator);
+    pub fn makeEqualTo(self: *@This(), insn: InsnId, replacement: InsnId) !void {
+        try self.union_find.makeEqualTo(insn, replacement, self.allocator);
     }
 
-    fn resolve_id(self: *const @This(), insn_id: InsnId) InsnId {
-        return self.union_find.find_const(insn_id);
+    fn resolveId(self: *const @This(), insn_id: InsnId) InsnId {
+        return self.union_find.findConst(insn_id);
     }
 
     // Resolve this instruction and its operands through union-find.
-    pub fn find_insn(self: *const @This(), insn_id: InsnId) Insn {
-        const found_id = self.resolve_id(insn_id);
+    pub fn findInsn(self: *const @This(), insn_id: InsnId) Insn {
+        const found_id = self.resolveId(insn_id);
         const insn = self.insns.items[found_id];
 
         return switch (insn) {
-            .add => |p| .{ .add = .{ .lhs = self.resolve_id(p.lhs), .rhs = self.resolve_id(p.rhs) } },
-            .sub => |p| .{ .sub = .{ .lhs = self.resolve_id(p.lhs), .rhs = self.resolve_id(p.rhs) } },
-            .mul => |p| .{ .mul = .{ .lhs = self.resolve_id(p.lhs), .rhs = self.resolve_id(p.rhs) } },
-            .div => |p| .{ .div = .{ .lhs = self.resolve_id(p.lhs), .rhs = self.resolve_id(p.rhs) } },
-            .copy => |p| .{ .copy = .{ .value = self.resolve_id(p.value) } },
+            .add => |p| .{ .add = .{ .lhs = self.resolveId(p.lhs), .rhs = self.resolveId(p.rhs) } },
+            .sub => |p| .{ .sub = .{ .lhs = self.resolveId(p.lhs), .rhs = self.resolveId(p.rhs) } },
+            .mul => |p| .{ .mul = .{ .lhs = self.resolveId(p.lhs), .rhs = self.resolveId(p.rhs) } },
+            .div => |p| .{ .div = .{ .lhs = self.resolveId(p.lhs), .rhs = self.resolveId(p.rhs) } },
+            .copy => |p| .{ .copy = .{ .value = self.resolveId(p.value) } },
             else => insn,
         };
     }
 
-    pub fn dump_ir(self: *const @This(), writer: *std.Io.Writer) !void {
+    pub fn dumpIr(self: *const @This(), writer: *std.Io.Writer) !void {
         const order = try self.rpo();
         for (order.items) |block_id| {
             const block = self.blocks.items[block_id];
             try writer.print("bb{d}()\n", .{block_id});
             for (block.insns.items) |insn_id| {
-                const found_id = self.resolve_id(insn_id);
+                const found_id = self.resolveId(insn_id);
                 // const raw_insn = self.insns.items[insn_id];
                 if (found_id != insn_id) continue; // logically delete from the dump output
-                const insn = self.find_insn(insn_id);
-                try dump_insn(insn_id, insn, writer);
+                const insn = self.findInsn(insn_id);
+                try dumpInsn(insn_id, insn, writer);
             }
-            try self.dump_terminator(block.term, writer);
+            try self.dumpTerminator(block.term, writer);
         }
     }
 
-    fn dump_insn(insn_id: InsnId, insn: Insn, writer: *std.Io.Writer) !void {
+    fn dumpInsn(insn_id: InsnId, insn: Insn, writer: *std.Io.Writer) !void {
         switch (insn) {
             .const_ => |payload| {
                 try writer.print("  v{d} = Const Value({d})\n", .{ insn_id, payload.value });
@@ -108,17 +108,17 @@ pub const Function = struct {
         }
     }
 
-    fn dump_terminator(self: *const @This(), term: Terminator, writer: *std.Io.Writer) !void {
+    fn dumpTerminator(self: *const @This(), term: Terminator, writer: *std.Io.Writer) !void {
         switch (term) {
             .ret => |p| {
-                const value = self.resolve_id(p.value);
+                const value = self.resolveId(p.value);
                 try writer.print("  Return v{d}\n", .{value});
             },
             .jump => |p| {
                 try writer.print("  Jump bb{d}\n", .{p.target});
             },
             .branch => |p| {
-                const cond = self.resolve_id(p.cond);
+                const cond = self.resolveId(p.cond);
                 try writer.print("  Branch v{d}, bb{d}, bb{d}\n", .{ cond, p.then_block, p.else_block });
             },
             else => {},
@@ -130,13 +130,13 @@ pub const Function = struct {
 
         var order: std.ArrayList(BlockId) = .empty;
 
-        try self.dfs_postorder(self.entry, &visited, &order);
+        try self.dfsPostorder(self.entry, &visited, &order);
 
         std.mem.reverse(BlockId, order.items);
         return order;
     }
 
-    fn dfs_postorder(
+    fn dfsPostorder(
         self: *const @This(),
         block_id: BlockId,
         visited: *std.DynamicBitSet,
@@ -152,11 +152,11 @@ pub const Function = struct {
             .none => {},
             .ret => {},
             .jump => |p| {
-                try self.dfs_postorder(p.target, visited, order);
+                try self.dfsPostorder(p.target, visited, order);
             },
             .branch => |p| {
-                try self.dfs_postorder(p.else_block, visited, order);
-                try self.dfs_postorder(p.then_block, visited, order);
+                try self.dfsPostorder(p.else_block, visited, order);
+                try self.dfsPostorder(p.then_block, visited, order);
             },
         }
 
@@ -176,7 +176,7 @@ pub const Insn = union(enum) {
     div: struct { lhs: InsnId, rhs: InsnId },
     copy: struct { value: InsnId },
 
-    // fn has_output(self: @This()) bool {
+    // fn hasOutput(self: @This()) bool {
     //     return switch (self) {
     //         .ret => false,
     //         else => true,
@@ -209,11 +209,11 @@ pub const BasicBlock = struct {
         };
     }
 
-    fn push_insn(self: *@This(), insn: InsnId, allocator: std.mem.Allocator) !void {
+    fn pushInsn(self: *@This(), insn: InsnId, allocator: std.mem.Allocator) !void {
         try self.insns.append(allocator, insn);
     }
 
-    fn set_terminator(self: *@This(), term: Terminator) void {
+    fn setTerminator(self: *@This(), term: Terminator) void {
         self.term = term;
     }
 

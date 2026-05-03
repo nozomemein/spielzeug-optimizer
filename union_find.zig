@@ -33,7 +33,7 @@ pub fn UnionFind(comptime T: type) type {
         }
 
         pub fn find(self: *@This(), insn: T, allocator: std.mem.Allocator) !T {
-            const result = self.find_const(insn);
+            const result = self.findConst(insn);
             if (result != insn) {
                 // path compression
                 try self.set(insn, result, allocator);
@@ -41,7 +41,7 @@ pub fn UnionFind(comptime T: type) type {
             return result;
         }
 
-        pub fn find_const(self: *const @This(), insn: T) T {
+        pub fn findConst(self: *const @This(), insn: T) T {
             var result = insn;
             while (true) {
                 const next = self.at(result) orelse return result;
@@ -50,7 +50,7 @@ pub fn UnionFind(comptime T: type) type {
             }
         }
 
-        pub fn make_equal_to(
+        pub fn makeEqualTo(
             self: *@This(),
             insn: T,
             target: T,
@@ -73,8 +73,8 @@ test "find transitive targets" {
     var uf = UnionFind(usize).init();
     defer uf.deinit(std.testing.allocator);
 
-    try uf.make_equal_to(3, 4, std.testing.allocator);
-    try uf.make_equal_to(4, 5, std.testing.allocator);
+    try uf.makeEqualTo(3, 4, std.testing.allocator);
+    try uf.makeEqualTo(4, 5, std.testing.allocator);
     try std.testing.expectEqual(5, try uf.find(3, std.testing.allocator));
     try std.testing.expectEqual(5, try uf.find(4, std.testing.allocator));
 }
@@ -83,8 +83,8 @@ test "find path compression" {
     var uf = UnionFind(usize).init();
     defer uf.deinit(std.testing.allocator);
 
-    try uf.make_equal_to(3, 4, std.testing.allocator);
-    try uf.make_equal_to(4, 5, std.testing.allocator);
+    try uf.makeEqualTo(3, 4, std.testing.allocator);
+    try uf.makeEqualTo(4, 5, std.testing.allocator);
     try std.testing.expectEqual(4, uf.at(3).?);
     try std.testing.expectEqual(5, try uf.find(3, std.testing.allocator));
     try std.testing.expectEqual(5, uf.at(3).?);

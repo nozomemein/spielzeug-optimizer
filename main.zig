@@ -12,33 +12,33 @@ pub fn main(init: std.process.Init) !void {
     const stdout = &stdout_writer.interface;
 
     var function = Function.init(arena);
-    const entry = try function.create_block();
+    const entry = try function.createBlock();
     function.entry = entry;
-    const val1 = try function.push_insn(entry, .{
+    const val1 = try function.pushInsn(entry, .{
         .const_ = .{ .value = 10 },
     });
-    const val2 = try function.push_insn(entry, .{
+    const val2 = try function.pushInsn(entry, .{
         .const_ = .{ .value = 5 },
     });
-    _ = try function.push_insn(entry, .{
+    _ = try function.pushInsn(entry, .{
         .add = .{ .lhs = val1, .rhs = val2 },
     });
-    _ = try function.push_insn(entry, .{
+    _ = try function.pushInsn(entry, .{
         .add = .{ .lhs = val1, .rhs = val2 },
     });
 
-    const jump_target = try function.create_block();
-    try function.set_terminator(entry, .{
+    const jump_target = try function.createBlock();
+    try function.setTerminator(entry, .{
         .jump = .{ .target = jump_target },
     });
 
-    const val3 = try function.push_insn(jump_target, .{
+    const val3 = try function.pushInsn(jump_target, .{
         .const_ = .{ .value = 15 },
     });
-    try function.set_terminator(jump_target, .{
+    try function.setTerminator(jump_target, .{
         .ret = .{ .value = val3 },
     });
 
-    try function.dump_ir(stdout);
+    try function.dumpIr(stdout);
     try stdout.flush();
 }

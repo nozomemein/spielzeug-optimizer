@@ -38,20 +38,20 @@ pub const LocalValueNumbering = struct {
 
     pub fn run(self: *const @This()) !void {
         for ((try self.function.rpo()).items) |block_id| {
-            try self.run_block(block_id);
+            try self.runBlock(block_id);
         }
     }
 
-    fn run_block(self: *@This(), block_id: BlockId) !void {
+    fn runBlock(self: *const @This(), block_id: BlockId) !void {
         var entries: std.ArrayList(LvnEntry) = .empty;
         const block = self.function.blocks.items[block_id];
 
         for (block.insns.items) |insn_id| {
-            const insn = self.function.find_insn(insn_id);
+            const insn = self.function.findInsn(insn_id);
 
-            if (try key_from_insn(self.function, insn)) |key| {
-                if (find_existing(entries.items, key)) |entry| {
-                    try self.function.make_equal_to(insn_id, entry);
+            if (try keyFromInsn(self.function, insn)) |key| {
+                if (findExisting(entries.items, key)) |entry| {
+                    try self.function.makeEqualTo(insn_id, entry);
                 } else {
                     try entries.append(self.function.allocator, .{ .key = key, .insn_id = insn_id });
                 }
@@ -60,7 +60,7 @@ pub const LocalValueNumbering = struct {
     }
 };
 
-fn find_existing(entries: []const LvnEntry, key: ExprKey) ?InsnId {
+fn findExisting(entries: []const LvnEntry, key: ExprKey) ?InsnId {
     for (entries) |entry| {
         if (std.meta.eql(entry.key, key)) {
             return entry.insn_id;
@@ -70,20 +70,20 @@ fn find_existing(entries: []const LvnEntry, key: ExprKey) ?InsnId {
     return null;
 }
 
-fn key_from_insn(function: *Function, insn: Insn) !?ExprKey {
+fn keyFromInsn(function: *Function, insn: Insn) !?ExprKey {
     return switch (insn) {
         .const_ => |payload| .{
             .const_ = payload.value,
         },
-        .add => |payload| try bin_key(function, .add, payload.lhs, payload.rhs),
-        .sub => |payload| try bin_key(function, .sub, payload.lhs, payload.rhs),
-        .mul => |payload| try bin_key(function, .mul, payload.lhs, payload.rhs),
-        .div => |payload| try bin_key(function, .div, payload.lhs, payload.rhs),
+        .add => |payload| try binKey(function, .add, payload.lhs, payload.rhs),
+        .sub => |payload| try binKey(function, .sub, payload.lhs, payload.rhs),
+        .mul => |payload| try binKey(function, .mul, payload.lhs, payload.rhs),
+        .div => |payload| try binKey(function, .div, payload.lhs, payload.rhs),
         else => null,
     };
 }
 
-fn bin_key(function: *Function, op: BinOp, lhs_raw: InsnId, rhs_raw: InsnId) !ExprKey {
+fn binKey(function: *Function, op: BinOp, lhs_raw: InsnId, rhs_raw: InsnId) !ExprKey {
     const lhs = try function.union_find.find(lhs_raw, function.allocator);
     const rhs = try function.union_find.find(rhs_raw, function.allocator);
 
