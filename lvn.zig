@@ -29,29 +29,36 @@ const LvnEntry = struct {
 };
 
 // TODO Support GVN
-// TODO: Refine with struct holding function reference
-pub fn run(function: *Function) !void {
-    for ((try function.rpo()).items) |block_id| {
-        try run_lvn_block(function, block_id);
+pub const LocalValueNumbering = struct {
+    function: *Function,
+
+    pub fn init(function: *Function) @This() {
+        return .{ .function = function };
     }
-}
 
-fn run_lvn_block(function: *Function, block_id: BlockId) !void {
-    var entries: std.ArrayList(LvnEntry) = .empty;
-    const block = function.blocks.items[block_id];
+    pub fn run(self: *const @This()) !void {
+        for ((try self.function.rpo()).items) |block_id| {
+            try self.run_block(block_id);
+        }
+    }
 
-    for (block.insns.items) |insn_id| {
-        const insn = function.find_insn(insn_id);
+    fn run_block(self: *@This(), block_id: BlockId) !void {
+        var entries: std.ArrayList(LvnEntry) = .empty;
+        const block = self.function.blocks.items[block_id];
 
-        if (try key_from_insn(function, insn)) |key| {
-            if (find_existing(entries.items, key)) |entry| {
-                try function.make_equal_to(insn_id, entry);
-            } else {
-                try entries.append(function.allocator, .{ .key = key, .insn_id = insn_id });
+        for (block.insns.items) |insn_id| {
+            const insn = self.function.find_insn(insn_id);
+
+            if (try key_from_insn(self.function, insn)) |key| {
+                if (find_existing(entries.items, key)) |entry| {
+                    try self.function.make_equal_to(insn_id, entry);
+                } else {
+                    try entries.append(self.function.allocator, .{ .key = key, .insn_id = insn_id });
+                }
             }
         }
     }
-}
+};
 
 fn find_existing(entries: []const LvnEntry, key: ExprKey) ?InsnId {
     for (entries) |entry| {
