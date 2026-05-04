@@ -19,10 +19,10 @@ test "local value numbering" {
     var function = Function.init(arena_state.allocator());
     const bb = try function.createBlock();
     const val1 = try function.pushInsn(bb, .{
-        .const_ = .{ .value = 10 },
+        .constant = .{ .value = 10 },
     });
     const val2 = try function.pushInsn(bb, .{
-        .const_ = .{ .value = 5 },
+        .constant = .{ .value = 5 },
     });
     _ = try function.pushInsn(bb, .{
         .add = .{ .lhs = val1, .rhs = val2 },
@@ -76,7 +76,7 @@ test "RPO" {
     const bb2 = try function.createBlock();
     const bb3 = try function.createBlock();
     const cond = try function.pushInsn(entry, .{
-        .const_ = .{ .value = 1 },
+        .constant = .{ .value = 1 },
     });
     try function.setTerminator(entry, .{
         .branch = .{ .cond = cond, .then_block = bb1, .else_block = bb2 },
@@ -88,7 +88,7 @@ test "RPO" {
         .jump = .{ .target = bb3 },
     });
     const bb3val = try function.pushInsn(bb3, .{
-        .const_ = .{ .value = 5 },
+        .constant = .{ .value = 5 },
     });
     try function.setTerminator(bb3, .{
         .ret = .{ .value = bb3val },

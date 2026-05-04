@@ -15,10 +15,10 @@ pub fn main(init: std.process.Init) !void {
     const entry = try function.createBlock();
     function.entry = entry;
     const val1 = try function.pushInsn(entry, .{
-        .const_ = .{ .value = 10 },
+        .constant = .{ .value = 10 },
     });
     const val2 = try function.pushInsn(entry, .{
-        .const_ = .{ .value = 5 },
+        .constant = .{ .value = 5 },
     });
     _ = try function.pushInsn(entry, .{
         .add = .{ .lhs = val1, .rhs = val2 },
@@ -33,7 +33,7 @@ pub fn main(init: std.process.Init) !void {
     });
 
     const val3 = try function.pushInsn(jump_target, .{
-        .const_ = .{ .value = 15 },
+        .constant = .{ .value = 15 },
     });
     try function.setTerminator(jump_target, .{
         .ret = .{ .value = val3 },

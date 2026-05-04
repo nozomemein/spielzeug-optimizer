@@ -15,7 +15,7 @@ const BinOp = enum {
 };
 
 const ExprKey = union(enum) {
-    const_: i64,
+    constant: i64,
     bin: struct {
         op: BinOp,
         lhs: InsnId,
@@ -78,8 +78,8 @@ fn findExisting(entries: []const LvnEntry, key: ExprKey) ?InsnId {
 
 fn keyFromInsn(function: *Function, insn: Insn) !?ExprKey {
     return switch (insn) {
-        .const_ => |payload| .{
-            .const_ = payload.value,
+        .constant => |payload| .{
+            .constant = payload.value,
         },
         .add => |payload| try binKey(function, .add, payload.lhs, payload.rhs),
         .sub => |payload| try binKey(function, .sub, payload.lhs, payload.rhs),

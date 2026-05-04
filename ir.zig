@@ -39,6 +39,12 @@ pub const Function = struct {
         try self.blocks.append(self.allocator, block);
     }
 
+    pub fn newInsn(self: *@This(), insn: Insn) !InsnId {
+        const insn_id = self.insns.items.len;
+        try self.insns.append(self.allocator, insn);
+        return insn_id;
+    }
+
     pub fn pushInsn(self: *@This(), block_id: BlockId, insn: Insn) !InsnId {
         const insn_id = self.insns.items.len;
         try self.insns.append(self.allocator, insn);
@@ -94,7 +100,7 @@ pub const Function = struct {
 
     fn dumpInsn(insn_id: InsnId, insn: Insn, writer: *std.Io.Writer) !void {
         switch (insn) {
-            .const_ => |payload| {
+            .constant => |payload| {
                 try writer.print("  v{d} = Const Value({d})\n", .{ insn_id, payload.value });
             },
             .add => |payload| {
@@ -176,19 +182,19 @@ pub const InsnId = usize; // type alias
 
 // Insn (minimal)
 pub const Insn = union(enum) {
-    const_: struct { value: i64 },
+    constant: struct { value: i64 },
     add: struct { lhs: InsnId, rhs: InsnId },
     sub: struct { lhs: InsnId, rhs: InsnId },
     mul: struct { lhs: InsnId, rhs: InsnId },
     div: struct { lhs: InsnId, rhs: InsnId },
     copy: struct { value: InsnId },
 
-    // fn hasOutput(self: @This()) bool {
-    //     return switch (self) {
-    //         .ret => false,
-    //         else => true,
-    //     };
-    // }
+    pub fn isBinOp(self: @This()) bool {
+        return switch (self) {
+            .add, .sub, .mul, .div => true,
+            else => false,
+        };
+    }
 };
 
 pub const Terminator = union(enum) {

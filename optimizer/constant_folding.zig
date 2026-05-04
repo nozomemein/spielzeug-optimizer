@@ -10,5 +10,59 @@ pub const ConstantFolding = struct {
         return .{ .function = function };
     }
 
-    // pub fn run(self: *const @This()) !void {}
+    pub fn run(self: *const @This()) !void {
+        for ((try self.function.rpo()).items) |block_id| {
+            var new_insns: std.ArrayList(ir.InsnId) = .empty;
+            const old_insns = self.function.blocks.items[block_id].insns.items;
+            self.function.blocks.items[block_id].insns = .empty;
+
+            for (old_insns) |insn_id| {
+                const insn = self.function.findInsn(insn_id);
+
+                switch (insn) {
+                    .add, .sub, .div, .mul => |p| {
+                        if (try self.foldBin(insn_id, p.lhs, p.rhs, insn)) |folded_id| {
+                            try new_insns.append(self.function.allocator, folded_id);
+                        }
+                    },
+                    else => {},
+                }
+                new_insns.append(self.function.allocator, insn_id);
+            }
+            self.function.blocks.items[block_id].insns = new_insns;
+        }
+    }
+    fn constValue(self: *const @This(), insn_id: ir.InsnId) ?i64 {
+        return switch (self.function.findInsn(insn_id)) {
+            .constant => |p| p.value,
+            else => null,
+        };
+    }
+
+    fn foldBin(
+        self: *const @This(),
+        insn_id: ir.InsnId,
+        lhs: ir.InsnId,
+        rhs: ir.InsnId,
+        op: ir.Insn,
+    ) !?ir.InsnId {
+        if (!op.isBinOp()) return error.NotBinOp;
+
+        const lhsval = self.constValue(lhs) orelse return null;
+        const rhsval = self.constValue(rhs) orelse return null;
+
+        const value = switch (op) {
+            .add => lhsval + rhsval,
+            .sub => lhsval - rhsval,
+            .mul => lhsval * rhsval,
+            .div => if (rhsval == 0) return null else @divTrunc(lhsval, rhsval),
+            else => unreachable,
+        };
+
+        const replacement_id = self.function.newInsn(.{
+            .constant = .{ .value = value },
+        });
+
+        try self.function.makeEqualTo(insn_id, replacement_id);
+    }
 };
