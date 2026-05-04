@@ -11,12 +11,15 @@ pub const ConstantFolding = struct {
     }
 
     pub fn run(self: *const @This()) !void {
-        for ((try self.function.rpo()).items) |block_id| {
-            var new_insns: std.ArrayList(ir.InsnId) = .empty;
-            const old_insns = self.function.blocks.items[block_id].insns.items;
-            self.function.blocks.items[block_id].insns = .empty;
+        var order = try self.function.rpo();
+        defer order.deinit(self.function.allocator);
 
-            for (old_insns) |insn_id| {
+        for (order.items) |block_id| {
+            var new_insns: std.ArrayList(ir.InsnId) = .empty;
+            errdefer new_insns.deinit(self.function.allocator);
+            var old_insns = self.function.blocks.items[block_id].insns;
+
+            for (old_insns.items) |insn_id| {
                 const insn = self.function.findInsn(insn_id);
 
                 switch (insn) {
@@ -49,6 +52,7 @@ pub const ConstantFolding = struct {
                 try new_insns.append(self.function.allocator, insn_id);
             }
             self.function.blocks.items[block_id].insns = new_insns;
+            old_insns.deinit(self.function.allocator);
         }
     }
     fn constValue(self: *const @This(), insn_id: ir.InsnId) ?i64 {

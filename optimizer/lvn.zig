@@ -37,18 +37,23 @@ pub const LocalValueNumbering = struct {
     }
 
     pub fn run(self: *const @This()) !void {
-        for ((try self.function.rpo()).items) |block_id| {
+        var order = try self.function.rpo();
+        defer order.deinit(self.function.allocator);
+
+        for (order.items) |block_id| {
             try self.runBlock(block_id);
         }
     }
 
     fn runBlock(self: *const @This(), block_id: BlockId) !void {
         var entries: std.ArrayList(LvnEntry) = .empty;
-        var new_insns: std.ArrayList(InsnId) = .empty;
-        const old_insns = self.function.blocks.items[block_id].insns.items;
-        self.function.blocks.items[block_id].insns = .empty;
+        defer entries.deinit(self.function.allocator);
 
-        for (old_insns) |insn_id| {
+        var new_insns: std.ArrayList(InsnId) = .empty;
+        errdefer new_insns.deinit(self.function.allocator);
+        var old_insns = self.function.blocks.items[block_id].insns;
+
+        for (old_insns.items) |insn_id| {
             const insn = self.function.findInsn(insn_id);
 
             if (try keyFromInsn(self.function, insn)) |key| {
@@ -63,6 +68,7 @@ pub const LocalValueNumbering = struct {
             }
         }
         self.function.blocks.items[block_id].insns = new_insns;
+        old_insns.deinit(self.function.allocator);
     }
 };
 

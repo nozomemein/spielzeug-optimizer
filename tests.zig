@@ -15,10 +15,9 @@ test {
 }
 
 test "local value numbering" {
-    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
-    defer arena_state.deinit();
+    var function = Function.init(std.testing.allocator);
+    defer function.deinit();
 
-    var function = Function.init(arena_state.allocator());
     const bb = try function.createBlock();
     const val1 = try function.pushInsn(bb, .{
         .constant = .{ .value = 10 },
@@ -69,10 +68,9 @@ test "local value numbering" {
 }
 
 test "constant folding snapshot" {
-    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
-    defer arena_state.deinit();
+    var function = Function.init(std.testing.allocator);
+    defer function.deinit();
 
-    var function = Function.init(arena_state.allocator());
     const bb = try function.createBlock();
     const val1 = try function.pushInsn(bb, .{
         .constant = .{ .value = 10 },
@@ -135,10 +133,9 @@ test "constant folding snapshot" {
 }
 
 test "RPO" {
-    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
-    defer arena_state.deinit();
+    var function = Function.init(std.testing.allocator);
+    defer function.deinit();
 
-    var function = Function.init(arena_state.allocator());
     const entry = try function.createBlock();
     const bb1 = try function.createBlock();
     const bb2 = try function.createBlock();

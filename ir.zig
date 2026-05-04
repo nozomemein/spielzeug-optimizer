@@ -86,7 +86,9 @@ pub const Function = struct {
     }
 
     pub fn dumpIr(self: *const @This(), writer: *std.Io.Writer) !void {
-        const order = try self.rpo();
+        var order = try self.rpo();
+        defer order.deinit(self.allocator);
+
         for (order.items) |block_id| {
             const block = self.blocks.items[block_id];
             try writer.print("bb{d}()\n", .{block_id});
@@ -140,8 +142,10 @@ pub const Function = struct {
 
     pub fn rpo(self: *const @This()) !std.ArrayList(BlockId) {
         var visited = try std.DynamicBitSet.initEmpty(self.allocator, self.blocks.items.len);
+        defer visited.deinit();
 
         var order: std.ArrayList(BlockId) = .empty;
+        errdefer order.deinit(self.allocator);
 
         try self.dfsPostorder(self.entry, &visited, &order);
 
