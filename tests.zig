@@ -1,7 +1,9 @@
 const std = @import("std");
 const ir = @import("ir.zig");
+const cf = @import("optimizer/constant_folding.zig");
 const lvn = @import("optimizer/lvn.zig");
 const Function = ir.Function;
+const ConstantFolding = cf.ConstantFolding;
 const LocalValueNumbering = lvn.LocalValueNumbering;
 
 test {
@@ -60,6 +62,72 @@ test "local value numbering" {
         \\  v1 = Const Value(5)
         \\  v2 = Add v0, v1
         \\  Return v2
+        \\
+    ,
+        out.writer.buffered(),
+    );
+}
+
+test "constant folding snapshot" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+
+    var function = Function.init(arena_state.allocator());
+    const bb = try function.createBlock();
+    const val1 = try function.pushInsn(bb, .{
+        .constant = .{ .value = 10 },
+    });
+    const val2 = try function.pushInsn(bb, .{
+        .constant = .{ .value = 5 },
+    });
+    _ = try function.pushInsn(bb, .{
+        .add = .{ .lhs = val1, .rhs = val2 },
+    });
+    _ = try function.pushInsn(bb, .{
+        .sub = .{ .lhs = val1, .rhs = val2 },
+    });
+    _ = try function.pushInsn(bb, .{
+        .mul = .{ .lhs = val1, .rhs = val2 },
+    });
+    const div = try function.pushInsn(bb, .{
+        .div = .{ .lhs = val1, .rhs = val2 },
+    });
+    try function.setTerminator(bb, .{
+        .ret = .{ .value = div },
+    });
+
+    var out = std.Io.Writer.Allocating.init(std.testing.allocator);
+    defer out.deinit();
+
+    try function.dumpIr(&out.writer);
+    try std.testing.expectEqualStrings(
+        \\bb0()
+        \\  v0 = Const Value(10)
+        \\  v1 = Const Value(5)
+        \\  v2 = Add v0, v1
+        \\  v3 = Sub v0, v1
+        \\  v4 = Mul v0, v1
+        \\  v5 = Div v0, v1
+        \\  Return v5
+        \\
+    ,
+        out.writer.buffered(),
+    );
+    out.clearRetainingCapacity();
+
+    const constant_folding = ConstantFolding.init(&function);
+    try constant_folding.run();
+    try function.dumpIr(&out.writer);
+
+    try std.testing.expectEqualStrings(
+        \\bb0()
+        \\  v0 = Const Value(10)
+        \\  v1 = Const Value(5)
+        \\  v6 = Const Value(15)
+        \\  v7 = Const Value(5)
+        \\  v8 = Const Value(50)
+        \\  v9 = Const Value(2)
+        \\  Return v9
         \\
     ,
         out.writer.buffered(),
