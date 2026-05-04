@@ -215,6 +215,7 @@ pub const Terminator = union(enum) {
 // Basic Block ID
 pub const BlockId = usize; // type alias
 // just BB
+// TODO: BB arguments
 pub const BasicBlock = struct {
     insns: std.ArrayList(InsnId),
     term: Terminator,

@@ -3,6 +3,7 @@ const ir = @import("../ir.zig");
 
 const Function = ir.Function;
 
+// TODO: SCCP/Global Constant Propagation
 pub const ConstantFolding = struct {
     function: *Function,
 
