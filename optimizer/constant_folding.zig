@@ -24,25 +24,7 @@ pub const ConstantFolding = struct {
                 const insn = self.function.findInsn(insn_id);
 
                 switch (insn) {
-                    .add => |p| {
-                        if (try self.foldBin(insn_id, p.lhs, p.rhs, insn)) |folded_id| {
-                            try new_insns.append(self.function.allocator, folded_id);
-                            continue;
-                        }
-                    },
-                    .sub => |p| {
-                        if (try self.foldBin(insn_id, p.lhs, p.rhs, insn)) |folded_id| {
-                            try new_insns.append(self.function.allocator, folded_id);
-                            continue;
-                        }
-                    },
-                    .div => |p| {
-                        if (try self.foldBin(insn_id, p.lhs, p.rhs, insn)) |folded_id| {
-                            try new_insns.append(self.function.allocator, folded_id);
-                            continue;
-                        }
-                    },
-                    .mul => |p| {
+                    .add, .sub, .mul, .div => |p| {
                         if (try self.foldBin(insn_id, p.lhs, p.rhs, insn)) |folded_id| {
                             try new_insns.append(self.function.allocator, folded_id);
                             continue;

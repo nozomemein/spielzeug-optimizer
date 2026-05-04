@@ -187,10 +187,10 @@ pub const InsnId = usize; // type alias
 // Insn (minimal)
 pub const Insn = union(enum) {
     constant: struct { value: i64 },
-    add: struct { lhs: InsnId, rhs: InsnId },
-    sub: struct { lhs: InsnId, rhs: InsnId },
-    mul: struct { lhs: InsnId, rhs: InsnId },
-    div: struct { lhs: InsnId, rhs: InsnId },
+    add: BinOpPayload,
+    sub: BinOpPayload,
+    mul: BinOpPayload,
+    div: BinOpPayload,
     copy: struct { value: InsnId },
 
     pub fn isBinOp(self: @This()) bool {
@@ -199,6 +199,11 @@ pub const Insn = union(enum) {
             else => false,
         };
     }
+};
+
+const BinOpPayload = struct {
+    lhs: InsnId,
+    rhs: InsnId,
 };
 
 pub const Terminator = union(enum) {
