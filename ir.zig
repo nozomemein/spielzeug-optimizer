@@ -75,9 +75,6 @@ pub const Function = struct {
             const block = self.blocks.items[block_id];
             try writer.print("bb{d}()\n", .{block_id});
             for (block.insns.items) |insn_id| {
-                const found_id = self.resolveId(insn_id);
-                // const raw_insn = self.insns.items[insn_id];
-                if (found_id != insn_id) continue; // logically delete from the dump output
                 const insn = self.findInsn(insn_id);
                 try dumpInsn(insn_id, insn, writer);
             }

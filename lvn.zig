@@ -44,19 +44,25 @@ pub const LocalValueNumbering = struct {
 
     fn runBlock(self: *const @This(), block_id: BlockId) !void {
         var entries: std.ArrayList(LvnEntry) = .empty;
-        const block = self.function.blocks.items[block_id];
+        var new_insns: std.ArrayList(InsnId) = .empty;
+        const old_insns = self.function.blocks.items[block_id].insns.items;
+        self.function.blocks.items[block_id].insns = .empty;
 
-        for (block.insns.items) |insn_id| {
+        for (old_insns) |insn_id| {
             const insn = self.function.findInsn(insn_id);
 
             if (try keyFromInsn(self.function, insn)) |key| {
                 if (findExisting(entries.items, key)) |entry| {
                     try self.function.makeEqualTo(insn_id, entry);
-                } else {
-                    try entries.append(self.function.allocator, .{ .key = key, .insn_id = insn_id });
+                    continue; // delete the insn from the block.
                 }
+                try entries.append(self.function.allocator, .{ .key = key, .insn_id = insn_id });
+
+                try new_insns.append(self.function.allocator, insn_id);
+                continue;
             }
         }
+        self.function.blocks.items[block_id].insns = new_insns;
     }
 };
 
