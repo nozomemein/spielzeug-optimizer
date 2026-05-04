@@ -1,5 +1,5 @@
 const std = @import("std");
-const ir = @import("ir.zig");
+const ir = @import("../ir.zig");
 
 const Function = ir.Function;
 const InsnId = ir.InsnId;

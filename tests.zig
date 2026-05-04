@@ -1,6 +1,6 @@
 const std = @import("std");
 const ir = @import("ir.zig");
-const lvn = @import("lvn.zig");
+const lvn = @import("optimizer/lvn.zig");
 const Function = ir.Function;
 const LocalValueNumbering = lvn.LocalValueNumbering;
 

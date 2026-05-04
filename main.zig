@@ -1,7 +1,6 @@
 const std = @import("std");
 const ir = @import("ir.zig");
-const Function = ir.Function;
-const lvn = @import("lvn.zig");
+const opt = @import("optimizer/optimizer.zig");
 
 pub fn main(init: std.process.Init) !void {
     const arena = init.arena.allocator();
@@ -11,7 +10,7 @@ pub fn main(init: std.process.Init) !void {
     var stdout_writer = std.Io.File.stdout().writer(init.io, &buffer);
     const stdout = &stdout_writer.interface;
 
-    var function = Function.init(arena);
+    var function = ir.Function.init(arena);
     const entry = try function.createBlock();
     function.entry = entry;
     const val1 = try function.pushInsn(entry, .{
@@ -39,6 +38,9 @@ pub fn main(init: std.process.Init) !void {
         .ret = .{ .value = val3 },
     });
 
+    try function.dumpIr(stdout);
+    const optimizer = opt.Optimizer.init(&function);
+    try optimizer.run();
     try function.dumpIr(stdout);
     try stdout.flush();
 }
