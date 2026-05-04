@@ -20,8 +20,13 @@ pub const Function = struct {
     }
 
     pub fn deinit(self: *@This()) void {
-        self.insns.deinit(self.allocator);
-        self.blocks.deinit(self.allocator);
+        const allocator = self.allocator;
+        for (self.blocks.items) |*block| {
+            block.deinit(allocator);
+        }
+        self.union_find.deinit(allocator);
+        self.insns.deinit(allocator);
+        self.blocks.deinit(allocator);
     }
 
     pub fn createBlock(self: *@This()) !BlockId {

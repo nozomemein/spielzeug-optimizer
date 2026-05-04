@@ -11,6 +11,7 @@ pub fn main(init: std.process.Init) !void {
     const stdout = &stdout_writer.interface;
 
     var function = ir.Function.init(arena);
+    defer function.deinit();
     const entry = try function.createBlock();
     function.entry = entry;
     const val1 = try function.pushInsn(entry, .{
@@ -43,5 +44,4 @@ pub fn main(init: std.process.Init) !void {
     try optimizer.run();
     try function.dumpIr(stdout);
     try stdout.flush();
-    function.deinit();
 }
