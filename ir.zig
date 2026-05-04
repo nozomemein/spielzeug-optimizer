@@ -230,7 +230,7 @@ pub const BasicBlock = struct {
         self.term = term;
     }
 
-    fn deinit(self: *@This()) void {
-        self.insns.deinit;
+    fn deinit(self: *@This(), allocator: std.mem.Allocator) void {
+        self.insns.deinit(allocator);
     }
 };

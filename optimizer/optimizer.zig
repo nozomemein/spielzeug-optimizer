@@ -6,7 +6,7 @@ const cf = @import("constant_folding.zig");
 const Function = ir.Function;
 
 const Passes = .{
-    // cf.ConstantFolding,
+    cf.ConstantFolding,
     lvn.LocalValueNumbering,
 };
 

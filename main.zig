@@ -39,9 +39,11 @@ pub fn main(init: std.process.Init) !void {
         .ret = .{ .value = val3 },
     });
 
+    try stdout.print("===Initial IR===\n", .{});
     try function.dumpIr(stdout);
     const optimizer = opt.Optimizer.init(&function);
     try optimizer.run();
+    try stdout.print("\n===Optimized IR===\n", .{});
     try function.dumpIr(stdout);
     try stdout.flush();
 }

@@ -20,14 +20,33 @@ pub const ConstantFolding = struct {
                 const insn = self.function.findInsn(insn_id);
 
                 switch (insn) {
-                    .add, .sub, .div, .mul => |p| {
+                    .add => |p| {
                         if (try self.foldBin(insn_id, p.lhs, p.rhs, insn)) |folded_id| {
                             try new_insns.append(self.function.allocator, folded_id);
+                            continue;
+                        }
+                    },
+                    .sub => |p| {
+                        if (try self.foldBin(insn_id, p.lhs, p.rhs, insn)) |folded_id| {
+                            try new_insns.append(self.function.allocator, folded_id);
+                            continue;
+                        }
+                    },
+                    .div => |p| {
+                        if (try self.foldBin(insn_id, p.lhs, p.rhs, insn)) |folded_id| {
+                            try new_insns.append(self.function.allocator, folded_id);
+                            continue;
+                        }
+                    },
+                    .mul => |p| {
+                        if (try self.foldBin(insn_id, p.lhs, p.rhs, insn)) |folded_id| {
+                            try new_insns.append(self.function.allocator, folded_id);
+                            continue;
                         }
                     },
                     else => {},
                 }
-                new_insns.append(self.function.allocator, insn_id);
+                try new_insns.append(self.function.allocator, insn_id);
             }
             self.function.blocks.items[block_id].insns = new_insns;
         }
@@ -59,10 +78,11 @@ pub const ConstantFolding = struct {
             else => unreachable,
         };
 
-        const replacement_id = self.function.newInsn(.{
+        const replacement_id = try self.function.newInsn(.{
             .constant = .{ .value = value },
         });
 
         try self.function.makeEqualTo(insn_id, replacement_id);
+        return replacement_id;
     }
 };
