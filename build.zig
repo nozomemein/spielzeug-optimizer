@@ -1,11 +1,14 @@
 const std = @import("std");
 
 pub fn build(b: *std.Build) void {
+    const target = b.standardTargetOptions(.{});
+    const optimize = b.standardOptimizeOption(.{});
     const exe = b.addExecutable(.{
         .name = "spielzeug-optimizer",
         .root_module = b.createModule(.{
             .root_source_file = b.path("main.zig"),
-            .target = b.graph.host,
+            .target = target,
+            .optimize = optimize
         }),
     });
     b.installArtifact(exe);
@@ -19,7 +22,8 @@ pub fn build(b: *std.Build) void {
         .name = "test",
         .root_module = b.createModule(.{
             .root_source_file = b.path("tests.zig"),
-            .target = b.graph.host,
+            .target = target,
+            .optimize = optimize
         }),
     });
 
