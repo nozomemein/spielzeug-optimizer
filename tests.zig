@@ -4,6 +4,14 @@ const lvn = @import("optimizer/lvn.zig");
 const Function = ir.Function;
 const LocalValueNumbering = lvn.LocalValueNumbering;
 
+test {
+    _ = @import("union_find.zig");
+    _ = @import("ir.zig");
+    _ = @import("optimizer/lvn.zig");
+    _ = @import("optimizer/constant_folding.zig");
+    _ = @import("optimizer/optimizer.zig");
+}
+
 test "local value numbering" {
     var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena_state.deinit();

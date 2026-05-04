@@ -43,4 +43,5 @@ pub fn main(init: std.process.Init) !void {
     try optimizer.run();
     try function.dumpIr(stdout);
     try stdout.flush();
+    function.deinit();
 }

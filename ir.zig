@@ -19,6 +19,11 @@ pub const Function = struct {
         };
     }
 
+    pub fn deinit(self: *@This()) void {
+        self.insns.deinit(self.allocator);
+        self.blocks.deinit(self.allocator);
+    }
+
     pub fn createBlock(self: *@This()) !BlockId {
         const block_id = self.blocks.items.len;
         try self.pushBlock(BasicBlock.init());
@@ -214,8 +219,7 @@ pub const BasicBlock = struct {
         self.term = term;
     }
 
-    // Optional if we want to release manually
-    // fn deinit(self: *BasicBlock) void {
-    //   self.insns.deinit;
-    // }
+    fn deinit(self: *@This()) void {
+        self.insns.deinit;
+    }
 };
